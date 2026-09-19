@@ -204,6 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {onNewProject && (
               <div className="relative group">
                 <button
+                  id="sidebar-new-project-btn"
                   onClick={() => {
                     onNewProject();
                     if (onCloseMobile) onCloseMobile();

@@ -1,74 +1,97 @@
 # Natra Builder
-<img width="1869" height="957" alt="image" src="https://github.com/user-attachments/assets/55703939-3d36-4550-9c2e-7386a0efddd3" />
 
-> **Turn ideas into structured product documentation.**
-> An open-source, local-first AI documentation builder that helps developers, founders, and product teams turn product ideas into structured PRDs using their own AI API keys and models.
+<img width="1869" height="957" alt="Natra Builder Dashboard" src="https://github.com/user-attachments/assets/55703939-3d36-4550-9c2e-7386a0efddd3" />
 
----
+<p align="center">
+  <strong>Transform raw ideas into structured, engineering-ready Product Requirements Documents (PRDs).</strong><br>
+  A modern, local-first AI architecture engine running entirely in your browser.
+</p>
 
-## Features
-
-- **Local-First Architecture**: Zero cloud database requirement. All projects, documents, templates, and API keys are stored securely in your browser's IndexedDB via Dexie.
-- **Privacy Guaranteed**: Your API keys and product concepts never pass through an intermediary server. Requests connect directly to Google's Generative Language API from your browser.
-- **PRD Builder (Vertical Slice 1)**: An 8-step guided wizard based on the `01-PRD-TEMPLATE.md` standard:
-  1. Product Overview (Name, summary, goals, problem statement)
-  2. Target User (Personas, pain points, user desires)
-  3. Features (Core MVP must-haves, priorities, out-of-scope)
-  4. Product Flow (User journey, crucial actions, authentication, key screens)
-  5. Technical Context (Frontend, backend, storage, API constraints)
-  6. Requirements (Functional, non-functional, performance, a11y, security)
-  7. Edge Cases (Validation, empty states, failure scenarios, error recovery)
-  8. Release & Success (MVP milestone, Phase 2, success metrics)
-- **AI Model Freedom**: Enter any model manually (e.g., `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-1.5-flash`) or connect OpenAI-compatible endpoints (Ollama, Groq, DeepSeek).
-- **Split-View Markdown Editor & Preview**:
-  - Live preview formatted with GitHub-flavored markdown (tables, code blocks, checklists).
-  - Debounced autosave to IndexedDB with real-time status indicator (`Saved`, `Saving...`, `Unsaved changes`).
-  - Mobile responsive single-tab switcher (`Editor` / `Preview`).
-- **Export & Portability**:
-  - Download PRD as `.md` file.
-  - Export project as `.natra.json` backup file.
-  - Import previously exported projects.
-  - Full workspace backup import/export in Settings.
-- **Extensible Builder Interface**: Designed so future documentation builders (Feature Decomposition, Domain Model, Feature Flow, UI/UX Spec) can be plugged in without refactoring.
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Storage-IndexedDB_Local-10B981" alt="Local-First Storage" />
+  <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License" />
+</p>
 
 ---
 
-## Tech Stack
+## ⚡ Highlights
 
-- **Framework**: React 19 + TypeScript + Vite
-- **Storage**: IndexedDB (Dexie)
-- **Styling**: Tailwind CSS
-- **Markdown**: `react-markdown` + `remark-gfm`
-- **Icons**: `lucide-react`
-- **Deployment**: Vercel ready (static client-side SPA)
+| Feature | Description |
+| :--- | :--- |
+| **🛡️ 100% Local-First** | Zero cloud database requirement. Projects, PRDs, and settings live securely in browser IndexedDB via Dexie. |
+| **🔒 Direct API Privacy** | Your Google Gemini API keys never touch intermediate servers—calls stream directly from browser to Google AI. |
+| **📋 8-Step PRD Wizard** | Guided workflow covering Product Context, Personas, User Journeys, Edge Cases, and Acceptance Criteria. |
+| **📝 Split Markdown Editor** | Real-time dual-pane editor with GitHub-flavored markdown rendering and debounced autosave. |
+| **⚡ Command Palette** | Instant navigation and search launcher powered by keyboard shortcuts (`⌘K` / `Ctrl+K`). |
+| **📦 Multi-Format Export** | One-click export to GitHub Markdown (`.md`), printable PDF, or portable `.natra.json` project backups. |
 
 ---
 
-## Getting Started
+## 🚀 Quick Start
 
-### Local Development
+### Prerequisites
+- Node.js 18+
+- npm, pnpm, or bun
 
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-
-2. Start development server:
-   ```bash
-   pnpm dev
-   ```
-
-3. Open `http://localhost:3000` in your browser.
-
-### Build for Production / Vercel
+### Setup & Run
 
 ```bash
-pnpm build
+# Clone the repository
+git clone https://github.com/<your-username>/natra-builder.git
+cd natra-builder
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
 ```
-The output will be in `dist/`, ready for static deployment to Vercel, Cloudflare Pages, GitHub Pages, or Netlify.
+
+Visit `http://localhost:3000` to access the workspace.
 
 ---
 
-## License
+## 🛠️ Tech Stack
 
-Apache-2.0
+- **Core**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Storage**: [Dexie.js](https://dexie.org/) (Client-Side IndexedDB)
+- **Markdown**: [react-markdown](https://github.com/remarkjs/react-markdown) + [remark-gfm](https://github.com/remarkjs/remark-gfm)
+- **AI Integration**: [@google/genai](https://github.com/google/generative-ai-js) (Gemini 2.5 Flash / Pro)
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| <kbd>⌘</kbd> + <kbd>K</kbd> / <kbd>Ctrl</kbd> + <kbd>K</kbd> | Open Command Palette & Search |
+| <kbd>Esc</kbd> | Dismiss modals, popovers, or active tour |
+| <kbd>→</kbd> / <kbd>←</kbd> | Step through interactive workspace tour |
+
+---
+
+## 🚢 Production Build & Deployment
+
+Deployable as a zero-config static single-page application (SPA) on Vercel, Netlify, Cloudflare Pages, or GitHub Pages:
+
+```bash
+# Build production bundle
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+The compiled assets are generated cleanly in `/dist`.
+
+---
+
+## 📄 License
+
+Distributed under the **Apache-2.0 License**. See [LICENSE](LICENSE) for more information.

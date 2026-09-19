@@ -196,6 +196,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         {/* Pill Search Bar matching reference image with ⌘F / ⌘K shortcut */}
         <button
           type="button"
+          id="top-search-cmd-btn"
           onClick={onOpenCommandPalette}
           className="w-full bg-white dark:bg-[#111827] hover:bg-slate-50 dark:hover:bg-[#172033] border border-slate-200/90 dark:border-[#1e293b] rounded-full px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-sm text-slate-400 dark:text-slate-400 shadow-2xs transition-all text-left group min-w-0"
         >

@@ -12,6 +12,8 @@ import { SettingsView } from './components/settings/SettingsView';
 import { AccountProfileView } from './components/account/AccountProfileView';
 import { NewProjectModal } from './components/projects/NewProjectModal';
 import { ImportProjectModal } from './components/projects/ImportProjectModal';
+import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { GuidedTour } from './components/tour/GuidedTour';
 
 import { initializeDatabase } from './lib/db';
 import { 
@@ -75,6 +77,14 @@ export default function App() {
   // Modals
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('natra_onboarding_completed') !== 'true';
+    } catch (_) {
+      return false;
+    }
+  });
 
   // Database Data
   const [projects, setProjects] = useState<Project[]>([]);
@@ -377,6 +387,8 @@ export default function App() {
               onRefreshData={refreshData}
               themeMode={themeMode}
               onSetThemeMode={handleSetThemeMode}
+              onOpenOnboarding={() => setIsOnboardingOpen(true)}
+              onStartTour={() => setIsTourOpen(true)}
             />
           ) : activeTab === 'account' ? (
             <AccountProfileView
@@ -447,6 +459,34 @@ export default function App() {
           await refreshData();
           setSelectedProjectId(newProjId);
         }}
+      />
+
+      {/* Onboarding Experience for New Users */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        currentProfile={userProfile}
+        onSaveProfile={(updated) => {
+          setUserProfile(updated);
+          saveStoredUserProfile(updated);
+        }}
+        onStartTour={() => {
+          setIsTourOpen(true);
+        }}
+        onOpenPRDStudio={() => {
+          if (projects.length > 0) {
+            handleLaunchWizard(projects[0]);
+          } else {
+            setIsNewProjectModalOpen(true);
+          }
+        }}
+      />
+
+      {/* Interactive Guided Tour */}
+      <GuidedTour
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onComplete={() => setIsTourOpen(false)}
       />
     </div>
   );

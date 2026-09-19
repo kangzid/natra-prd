@@ -125,8 +125,15 @@ export async function initializeDatabase(): Promise<void> {
       });
     }
 
+    // Check if initial sample projects have already been seeded previously
+    const hasSeededBefore = typeof window !== 'undefined' && localStorage.getItem('natra_has_seeded_sample') === 'true';
+
     const projectCount = await db.projects.count();
-    if (projectCount === 0) {
+    if (projectCount > 0) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('natra_has_seeded_sample', 'true');
+      }
+    } else if (!hasSeededBefore) {
       const sampleProjectId = 'proj-sample-natra-flow';
       const now = new Date().toISOString();
 
@@ -161,6 +168,10 @@ export async function initializeDatabase(): Promise<void> {
         createdAt: now,
         updatedAt: now,
       });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('natra_has_seeded_sample', 'true');
+      }
     }
   } catch (err) {
     console.error('Failed to initialize database defaults:', err);
