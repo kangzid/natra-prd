@@ -1,4 +1,5 @@
 # Natra Builder
+<img width="1869" height="957" alt="image" src="https://github.com/user-attachments/assets/55703939-3d36-4550-9c2e-7386a0efddd3" />
 
 > **Turn ideas into structured product documentation.**
 > An open-source, local-first AI documentation builder that helps developers, founders, and product teams turn product ideas into structured PRDs using their own AI API keys and models.
