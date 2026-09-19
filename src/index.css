@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --app-bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-secondary: #f1f5f9;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --brand-blue: #1d4ed8;
+    --brand-blue-hover: #1e40af;
+    --brand-sky: #38bdf8;
+  }
+
+  .dark {
+    --app-bg: #0b0f19;
+    --surface: #111827;
+    --surface-secondary: #172033;
+    --border: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --brand-blue: #2563eb;
+    --brand-blue-hover: #3b82f6;
+    --brand-sky: #60a5fa;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code, pre, kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Diagonal stripe pattern for pending bars and indicators */
+.striped-bar-pattern {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(148, 163, 184, 0.45),
+    rgba(148, 163, 184, 0.45) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.dark .striped-bar-pattern {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(71, 85, 105, 0.65),
+    rgba(71, 85, 105, 0.65) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Deep sapphire topography mesh for cards */
+.wavy-blue-mesh {
+  background-color: #0b1e3a;
+  background-image: radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.3) 0px, transparent 55%),
+                    radial-gradient(at 0% 100%, rgba(29, 78, 216, 0.7) 0px, transparent 65%);
+}
+
+.dark .wavy-blue-mesh {
+  background-color: #081427;
+  background-image: radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.22) 0px, transparent 55%),
+                    radial-gradient(at 0% 100%, rgba(37, 99, 235, 0.6) 0px, transparent 65%);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+
+/* Technical Markdown Documentation Styling */
+.markdown-preview {
+  color: #334155;
+  line-height: 1.65;
+  font-size: 0.9375rem;
+}
+
+.dark .markdown-preview {
+  color: #cbd5e1;
+}
+
+.markdown-preview h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dark .markdown-preview h1 {
+  color: #f8fafc;
+  border-bottom-color: #1e293b;
+}
+
+.markdown-preview h2 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-top: 1.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.dark .markdown-preview h2 {
+  color: #f8fafc;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid #1d4ed8;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #475569;
+  background-color: #f1f5f9;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0 6px 6px 0;
+}
+
+.dark .markdown-preview blockquote {
+  border-left-color: #38bdf8;
+  color: #94a3b8;
+  background-color: #111827;
+}
+
+.markdown-preview code {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.825em;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .markdown-preview code {
+  background-color: #172033;
+  color: #f8fafc;
+  border-color: #1e293b;
+}

@@ -1,0 +1,397 @@
+import type { Builder, BuilderStep } from '../types';
+import { PRD_TEMPLATE_V1, PRD_SYSTEM_PROMPT } from '../templates/prd-template';
+
+export const prdSteps: BuilderStep[] = [
+  {
+    id: 'overview',
+    title: 'Product Overview',
+    description: 'Establish the core purpose, target problem, and boundaries of your product.',
+    fields: [
+      {
+        id: 'productName',
+        label: 'Product Name',
+        placeholder: 'e.g. Natra Flow, SwiftInvoice, PulseMetrics',
+        type: 'text',
+        required: true,
+      },
+      {
+        id: 'productDescription',
+        label: 'Product Description & Summary',
+        placeholder: 'What does this product do in 1-3 sentences?',
+        type: 'textarea',
+        required: true,
+        rows: 3,
+        helpText: 'You can write natural language — our AI engine will extract and structure the details.',
+      },
+      {
+        id: 'platform',
+        label: 'Primary Platform',
+        type: 'select',
+        options: [
+          { label: 'Web Application (SPA / Responsive)', value: 'Web Application' },
+          { label: 'Mobile Application (iOS / Android)', value: 'Mobile App' },
+          { label: 'Desktop App (macOS / Windows / Linux)', value: 'Desktop App' },
+          { label: 'API / Developer SDK / Microservice', value: 'API / Microservice' },
+          { label: 'Browser Extension', value: 'Browser Extension' },
+          { label: 'Multi-platform (Web + Mobile)', value: 'Multi-platform' },
+        ],
+        required: true,
+      },
+      {
+        id: 'problemStatement',
+        label: 'Problem Statement',
+        placeholder: 'What pain point or manual hassle does this solve for users?',
+        type: 'textarea',
+        rows: 3,
+      },
+      {
+        id: 'productGoal',
+        label: 'Primary Product Goals',
+        placeholder: 'What are the top 1-3 measurable goals this product accomplishes?',
+        type: 'textarea',
+        rows: 2,
+      },
+    ],
+  },
+  {
+    id: 'target-user',
+    title: 'Target User & Persona',
+    description: 'Define who will use this product and why they care.',
+    fields: [
+      {
+        id: 'targetUser',
+        label: 'Primary Target Users',
+        placeholder: 'e.g. Solo developers, boutique marketing agencies, remote project managers',
+        type: 'text',
+        required: true,
+      },
+      {
+        id: 'userPersona',
+        label: 'User Persona Detail',
+        placeholder: 'Role, behavior, skill level, or context of use',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'userPainPoints',
+        label: 'Key Pain Points',
+        placeholder: 'What frustrates them today with existing alternatives or manual spreadsheets?',
+        type: 'textarea',
+        rows: 3,
+      },
+      {
+        id: 'userGoals',
+        label: 'What does success look like for this user?',
+        placeholder: 'e.g. Reduce manual entry time from 2 hours to 5 minutes',
+        type: 'textarea',
+        rows: 2,
+      },
+    ],
+  },
+  {
+    id: 'features',
+    title: 'Features & Capabilities',
+    description: 'Enumerate what users can do and what is strictly out of scope.',
+    fields: [
+      {
+        id: 'coreFeatures',
+        label: 'Core Features (Must-Haves for MVP)',
+        placeholder: 'List the 3-5 crucial features required to make this functional',
+        type: 'textarea',
+        rows: 4,
+        required: true,
+        helpText: 'One feature per line or bullet points work great.',
+      },
+      {
+        id: 'featureDetails',
+        label: 'Feature Details & Specifics',
+        placeholder: 'Any specific mechanics or expectations for these features?',
+        type: 'textarea',
+        rows: 3,
+      },
+      {
+        id: 'priority',
+        label: 'Release Priority Scope',
+        type: 'select',
+        options: [
+          { label: 'P0 — Critical MVP Vertical Slice', value: 'P0 - Critical MVP' },
+          { label: 'P1 — High Priority Polish', value: 'P1 - High Priority' },
+          { label: 'P2 — Planned Next Iteration', value: 'P2 - Planned Next Iteration' },
+        ],
+      },
+      {
+        id: 'optionalFeatures',
+        label: 'Optional / Secondary Features',
+        placeholder: 'Nice-to-haves that can wait for Phase 2',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'outOfScope',
+        label: 'Explicitly Out of Scope',
+        placeholder: 'What are we definitely NOT building right now?',
+        type: 'textarea',
+        rows: 2,
+        helpText: 'Helps prevent scope creep in your generated specifications.',
+      },
+    ],
+  },
+  {
+    id: 'flow',
+    title: 'Product Flow & Navigation',
+    description: 'Chart the path the user takes through your application.',
+    fields: [
+      {
+        id: 'mainUserFlow',
+        label: 'Main User Journey',
+        placeholder: 'Step 1 -> Step 2 -> Step 3 -> Outcome',
+        type: 'textarea',
+        rows: 4,
+        required: true,
+      },
+      {
+        id: 'importantUserActions',
+        label: 'Critical User Actions',
+        placeholder: 'e.g. Create project, configure API key, run test, click export',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'authRequirement',
+        label: 'Authentication Requirements',
+        type: 'select',
+        options: [
+          { label: 'No Authentication (Local-first / Client-only)', value: 'No Authentication' },
+          { label: 'Email & Password', value: 'Email & Password' },
+          { label: 'Social OAuth (Google, GitHub, etc.)', value: 'OAuth' },
+          { label: 'Magic Link / Passwordless', value: 'Magic Link' },
+          { label: 'Enterprise SSO / SAML', value: 'Enterprise SSO' },
+        ],
+      },
+      {
+        id: 'mainScreens',
+        label: 'Key Screens or Pages',
+        placeholder: 'e.g. Dashboard, Editor view, Settings panel, Export dialog',
+        type: 'textarea',
+        rows: 2,
+      },
+    ],
+  },
+  {
+    id: 'technical',
+    title: 'Technical Context (Optional)',
+    description: 'Technical constraints help the AI tailor technical specifications and data structures.',
+    fields: [
+      {
+        id: 'frontendTech',
+        label: 'Frontend Tech Stack',
+        placeholder: 'e.g. Vite, React, TypeScript, Tailwind CSS',
+        type: 'text',
+      },
+      {
+        id: 'backendTech',
+        label: 'Backend & Server Layer',
+        placeholder: 'e.g. Client-side only / Node.js / Serverless / Go',
+        type: 'text',
+      },
+      {
+        id: 'databaseStorage',
+        label: 'Database / Storage Solution',
+        placeholder: 'e.g. IndexedDB via Dexie / SQLite / PostgreSQL',
+        type: 'text',
+      },
+      {
+        id: 'externalApis',
+        label: 'External APIs & Third-Party SDKs',
+        placeholder: 'e.g. Google Gemini API, Stripe, GitHub REST API',
+        type: 'text',
+      },
+      {
+        id: 'technicalConstraints',
+        label: 'Technical Constraints & Deployment Target',
+        placeholder: 'e.g. Must run purely in-browser, deploy to Vercel/Cloud Run, zero server dependencies',
+        type: 'textarea',
+        rows: 2,
+      },
+    ],
+  },
+  {
+    id: 'requirements',
+    title: 'System Requirements',
+    description: 'Specify functional and non-functional engineering standards.',
+    fields: [
+      {
+        id: 'functionalRequirements',
+        label: 'Key Functional Requirements',
+        placeholder: 'What functional behaviors are non-negotiable?',
+        type: 'textarea',
+        rows: 3,
+        required: true,
+      },
+      {
+        id: 'nonFunctionalRequirements',
+        label: 'Non-Functional Requirements',
+        placeholder: 'Performance, uptime, responsiveness targets',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'performanceRequirements',
+        label: 'Performance Targets',
+        placeholder: 'e.g. Initial load < 1.5s, sub-100ms keystroke latency, offline capability',
+        type: 'text',
+      },
+      {
+        id: 'securityRequirements',
+        label: 'Security & Privacy Guidelines',
+        placeholder: 'e.g. All API keys kept strictly client-side, zero tracking, XSS sanitization',
+        type: 'text',
+      },
+      {
+        id: 'accessibilityRequirements',
+        label: 'Accessibility (a11y) Target',
+        placeholder: 'e.g. WCAG 2.1 AA compliant, full keyboard navigation',
+        type: 'text',
+      },
+    ],
+  },
+  {
+    id: 'edge-cases',
+    title: 'Edge Cases & Error Handling',
+    description: 'Prepare for empty states, network anomalies, and unexpected input.',
+    fields: [
+      {
+        id: 'knownEdgeCases',
+        label: 'Foreseen Edge Cases',
+        placeholder: 'e.g. User enters an invalid AI model name, or clears browser storage',
+        type: 'textarea',
+        rows: 3,
+      },
+      {
+        id: 'errorScenarios',
+        label: 'Error Scenarios & Recovery',
+        placeholder: 'How should the system behave when external requests fail?',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'emptyStates',
+        label: 'Empty States',
+        placeholder: 'What is displayed when there are no projects or no documents?',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'permissionIssues',
+        label: 'Network / Quota / Permission Limitations',
+        placeholder: 'e.g. Browser offline status, API rate limit response',
+        type: 'text',
+      },
+    ],
+  },
+  {
+    id: 'release',
+    title: 'Release Phases & Success',
+    description: 'Define your release milestones and how you measure victory.',
+    fields: [
+      {
+        id: 'mvpScope',
+        label: 'Phase 1 — MVP Scope Definition',
+        placeholder: 'Summary of what ships in the first release',
+        type: 'textarea',
+        rows: 2,
+        required: true,
+      },
+      {
+        id: 'phase2Features',
+        label: 'Phase 2 — Enhancement Milestone',
+        placeholder: 'What will be added right after launch?',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'futureFeatures',
+        label: 'Future Horizons',
+        placeholder: 'Long-term dreams and visionary capabilities',
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        id: 'successCriteria',
+        label: 'Success Criteria / Core Metrics',
+        placeholder: 'e.g. Users successfully draft a ready-to-code PRD within 5 minutes',
+        type: 'textarea',
+        rows: 2,
+        required: true,
+      },
+    ],
+  },
+];
+
+export const prdBuilder: Builder = {
+  id: 'prd-builder',
+  name: 'PRD Builder',
+  description: 'Translate raw product ideas into an end-to-end, structured Product Requirements Document.',
+  category: 'Core Documentation',
+  version: '1.0.0',
+  status: 'active',
+  steps: prdSteps,
+  template: PRD_TEMPLATE_V1,
+  systemPrompt: PRD_SYSTEM_PROMPT,
+  defaultModel: 'gemini-2.5-flash',
+};
+
+// Extensible Builder Registry: PRD Builder is vertical slice 1 (Active).
+// Phase 2 upcoming pipeline builders are defined cleanly according to Section 18 & 48.
+export const upcomingBuilders: Builder[] = [
+  {
+    id: 'feature-decomposition-builder',
+    name: 'Feature Decomposition Builder',
+    description: 'Break high-level PRD features down into atomic engineering user stories and tasks.',
+    category: 'Engineering Spec',
+    version: '0.2.0',
+    status: 'upcoming',
+    steps: [],
+    template: '## Feature Decomposition Template (Phase 2)',
+    systemPrompt: 'You are a technical lead breaking down features into engineering tasks.',
+  },
+  {
+    id: 'domain-model-builder',
+    name: 'Domain & Data Model Builder',
+    description: 'Generate database schemas, entity relationship diagrams, and data validation rules.',
+    category: 'Data Architecture',
+    version: '0.2.0',
+    status: 'upcoming',
+    steps: [],
+    template: '## Domain & Entity Model (Phase 2)',
+    systemPrompt: 'You are a data architect defining database schemas and relationships.',
+  },
+  {
+    id: 'feature-flow-builder',
+    name: 'Feature Flow & Sequence Builder',
+    description: 'Map out step-by-step state machine transitions and interaction flows.',
+    category: 'Product Flow',
+    version: '0.2.0',
+    status: 'upcoming',
+    steps: [],
+    template: '## Feature Flow Spec (Phase 2)',
+    systemPrompt: 'You are a system analyst designing step-by-step user interaction flows.',
+  },
+  {
+    id: 'ui-ux-spec-builder',
+    name: 'UI/UX Design Spec Builder',
+    description: 'Draft responsive layout hierarchies, screen layouts, design tokens, and state states.',
+    category: 'Design & UX',
+    version: '0.2.0',
+    status: 'upcoming',
+    steps: [],
+    template: '## UI/UX Design Specification (Phase 2)',
+    systemPrompt: 'You are a principal designer creating comprehensive design specifications.',
+  },
+];
+
+export const allBuilders: Builder[] = [prdBuilder, ...upcomingBuilders];
+
+export function getBuilderById(id: string): Builder | undefined {
+  return allBuilders.find((b) => b.id === id);
+}

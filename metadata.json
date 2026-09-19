@@ -1,0 +1,6 @@
+{
+  "name": "Natra Builder",
+  "description": "Turn ideas into structured product documentation. Lightweight, local-first AI-assisted PRD Builder using Vite, React, TypeScript, and IndexedDB.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
