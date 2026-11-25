@@ -1,3 +1,6 @@
+import JSZip from 'jszip';
+import type { Document } from '../../types';
+
 export function downloadTextFile(filename: string, content: string, mimeType = 'text/markdown'): void {
   const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
   const url = URL.createObjectURL(blob);
@@ -35,13 +38,38 @@ export function exportJsonFile(filename: string, data: any): void {
   downloadTextFile(`${cleanName}.json`, jsonStr, 'application/json');
 }
 
+export async function exportProjectDocsZip(projectName: string, documents: Document[]): Promise<void> {
+  const zip = new JSZip();
+
+  for (const doc of documents) {
+    let targetPath = doc.filePath?.trim();
+    if (!targetPath) {
+      const slug = sanitizeFilename(doc.title) || 'document';
+      targetPath = `docs/${slug.endsWith('.md') ? slug : `${slug}.md`}`;
+    }
+    // Normalize leading slashes
+    targetPath = targetPath.replace(/^\/+/, '');
+    zip.file(targetPath, doc.content || '');
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const cleanProj = sanitizeFilename(projectName) || 'project';
+  link.href = url;
+  link.download = `${cleanProj}-docs.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return true;
     }
-    // Fallback
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';

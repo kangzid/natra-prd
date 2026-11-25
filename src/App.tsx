@@ -34,7 +34,7 @@ import {
   saveStoredUserProfile, 
   type UserProfile 
 } from './lib/profile';
-import type { Project, Document, AIProviderConfig, AppSettings, ProjectType } from './types';
+import type { Project, ProjectScope, DocStage, Document, AIProviderConfig, AppSettings, ProjectType } from './types';
 
 export type NavTab = 'dashboard' | 'projects' | 'builders' | 'settings' | 'account';
 
@@ -42,6 +42,7 @@ export default function App() {
   // Navigation & View State
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectDetailStage, setProjectDetailStage] = useState<DocStage | undefined>(undefined);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [wizardProject, setWizardProject] = useState<Project | null>(null);
   const [wizardDoc, setWizardDoc] = useState<Document | undefined>(undefined);
@@ -155,7 +156,7 @@ export default function App() {
   }, [refreshData]);
 
   // Handler: Create Project
-  const handleCreateProject = async (data: { name: string; type: ProjectType; description?: string }) => {
+  const handleCreateProject = async (data: { name: string; type: ProjectType; scope?: ProjectScope; description?: string }) => {
     const newProj = await projectRepo.create(data);
     await refreshData();
     return newProj;
@@ -209,12 +210,14 @@ export default function App() {
 
   // Handler: Completed Generation in Wizard
   const handleGenerationComplete = async (newDocId: string) => {
-    const [projs, docs] = await Promise.all([
+    const [projs, docs, provs] = await Promise.all([
       projectRepo.getAll(),
       documentRepo.getAll(),
+      providerRepo.getAll(),
     ]);
     setProjects(projs);
     setDocuments(docs);
+    setProviders(provs);
     setWizardProject(null);
     setWizardDoc(undefined);
     setActiveDocumentId(newDocId);
@@ -334,12 +337,23 @@ export default function App() {
             <ProjectDetailView
               project={currentProject}
               documents={currentProjectDocs}
-              onBack={() => setSelectedProjectId(null)}
+              providers={providers}
+              initialStage={projectDetailStage}
+              onBack={() => {
+                setSelectedProjectId(null);
+                setProjectDetailStage(undefined);
+              }}
               onLaunchPRD={handleLaunchWizard}
               onOpenDocument={(docId) => setActiveDocumentId(docId)}
               onDeleteDocument={handleDeleteDocument}
               onUpdateProject={handleUpdateProject}
               onDeleteProject={handleDeleteProject}
+              onRefreshData={refreshData}
+              onOpenSettings={() => {
+                setSelectedProjectId(null);
+                setProjectDetailStage(undefined);
+                setActiveTab('settings');
+              }}
             />
           ) : activeTab === 'dashboard' ? (
             <DashboardView
@@ -352,6 +366,7 @@ export default function App() {
                 if (projId === '__all__') {
                   setActiveTab('projects');
                 } else {
+                  setProjectDetailStage(undefined);
                   setSelectedProjectId(projId);
                 }
               }}
@@ -363,7 +378,10 @@ export default function App() {
             <ProjectsView
               projects={projects}
               documents={documents}
-              onSelectProject={(projId) => setSelectedProjectId(projId)}
+              onSelectProject={(projId) => {
+                setProjectDetailStage(undefined);
+                setSelectedProjectId(projId);
+              }}
               onNewProject={() => setIsNewProjectModalOpen(true)}
               onImportProject={() => setIsImportModalOpen(true)}
               onLaunchPRD={(proj) => handleLaunchWizard(proj)}
@@ -372,11 +390,22 @@ export default function App() {
           ) : activeTab === 'builders' ? (
             <BuildersCatalogView
               projects={projects}
-              onSelectBuilder={(_builderId, proj) => {
-                if (proj) {
-                  handleLaunchWizard(proj);
-                } else {
+              onSelectBuilder={(_builderId, proj, stage) => {
+                if (!proj) {
                   setIsNewProjectModalOpen(true);
+                  return;
+                }
+                if (stage === 'prd') {
+                  const existingPrd = documents.find(
+                    (d) =>
+                      d.projectId === proj.id &&
+                      (d.stage === 'prd' || d.filePath === 'docs/PRD.md' || d.builderId === 'prd-builder')
+                  );
+                  handleLaunchWizard(proj, existingPrd);
+                } else {
+                  setSelectedProjectId(proj.id);
+                  setProjectDetailStage(stage);
+                  setActiveTab('projects');
                 }
               }}
               onNewProject={() => setIsNewProjectModalOpen(true)}

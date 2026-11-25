@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  KeyRound, 
   Sparkles, 
   CheckCircle2, 
   AlertCircle, 
@@ -24,6 +23,7 @@ import {
 import type { AIProviderConfig, AIProviderType } from '../../types';
 import { providerRepo, exportAllDataJson, importAllDataJson, clearAllLocalData } from '../../lib/db/repository';
 import { getAIProviderInstance } from '../../lib/ai';
+import { DEFAULT_GEMINI_MODEL, RECOMMENDED_GEMINI_MODELS, normalizeGeminiModel } from '../../lib/ai/gemini';
 import { exportJsonFile } from '../../lib/export';
 import type { ThemeMode } from '../../lib/theme';
 
@@ -44,26 +44,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onOpenOnboarding,
   onStartTour,
 }) => {
-  // Provider Edit/Add Modal State
   const [editingProvider, setEditingProvider] = useState<AIProviderConfig | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Form fields for editing/adding
   const [providerName, setProviderName] = useState('');
   const [providerType, setProviderType] = useState<AIProviderType>('gemini');
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
-  const [model, setModel] = useState('gemini-2.5-flash');
+  const [model, setModel] = useState(DEFAULT_GEMINI_MODEL);
   const [temperature, setTemperature] = useState(0.7);
   const [isDefault, setIsDefault] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
-  // Test connection state
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; details?: string } | null>(null);
-
-  // General state
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const startEditProvider = (p: AIProviderConfig) => {
@@ -71,14 +66,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIsAddingNew(false);
     setProviderName(p.name);
     setProviderType(p.type);
-    setApiKey(p.apiKey);
+    setApiKey(p.apiKey || '');
     setBaseUrl(p.baseUrl || '');
-    setModel(p.defaultModel);
+    setModel(p.type === 'gemini' ? normalizeGeminiModel(p.defaultModel) : p.defaultModel);
     setTemperature(p.temperature ?? 0.7);
     setIsDefault(Boolean(p.isDefault));
     setTestResult(null);
     setShowKey(false);
-    setShowAdvanced(Boolean(p.baseUrl || (p.temperature && p.temperature !== 0.7)));
+    setShowAdvanced(Boolean(p.baseUrl));
   };
 
   const startNewProvider = () => {
@@ -88,7 +83,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setProviderType('gemini');
     setApiKey('');
     setBaseUrl('');
-    setModel('gemini-2.5-flash');
+    setModel(DEFAULT_GEMINI_MODEL);
     setTemperature(0.7);
     setIsDefault(providers.length === 0);
     setTestResult(null);
@@ -121,7 +116,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         type: providerType,
         apiKey: apiKey.trim(),
         baseUrl: baseUrl.trim(),
-        defaultModel: model.trim(),
+        defaultModel: model.trim() || DEFAULT_GEMINI_MODEL,
         temperature,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -150,7 +145,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         type: providerType,
         apiKey: apiKey.trim(),
         baseUrl: baseUrl.trim() || undefined,
-        defaultModel: model.trim(),
+        defaultModel: model.trim() || DEFAULT_GEMINI_MODEL,
         temperature,
         isDefault,
       });
@@ -160,6 +155,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err?.message || 'Failed to save provider.' });
+    }
+  };
+
+  const handleClearProviderKey = async (p: AIProviderConfig) => {
+    try {
+      await providerRepo.update(p.id, { apiKey: '' });
+      await onRefreshData();
+      setStatusMessage({ type: 'success', text: `API key cleared for "${p.name}".` });
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: 'Failed to clear API key: ' + err.message });
     }
   };
 
@@ -217,7 +223,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto px-4 sm:px-8 py-6">
-      {/* Header matching Projects and Dashboard view */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -246,12 +251,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* Section 1: Appearance & Theme Preference */}
+      {/* Appearance */}
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200/80 dark:border-[#1e293b] p-6 shadow-2xs space-y-4">
         <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            Appearance
-          </h2>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Appearance</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Select how Natra Builder looks on your display.
           </p>
@@ -308,11 +311,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Section: Onboarding & Guided Tour */}
+      {/* Onboarding & Guided Tour */}
       {(onOpenOnboarding || onStartTour) && (
         <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200/80 dark:border-[#1e293b] p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start space-x-3.5">
-            {/* Circle container with blue icon */}
             <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 ring-1 ring-blue-200 dark:ring-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
               <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -354,7 +356,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* Section 2: Client-Side Security Notice */}
+      {/* Local Credential Isolation */}
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200/80 dark:border-[#1e293b] p-5 shadow-2xs space-y-2">
         <div className="flex items-center space-x-2 text-[#1d4ed8] dark:text-blue-400">
           <ShieldCheck className="w-5 h-5" />
@@ -363,11 +365,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </h2>
         </div>
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-          API keys are encrypted locally in your browser IndexedDB and sent directly to Google AI endpoints with zero proxy servers.
+          API keys stay blank by default—enter your own Gemini key manually. Credentials are saved strictly in your browser IndexedDB and executed via the modern <code className="font-mono">@google/genai</code> SDK endpoint.
         </p>
       </div>
 
-      {/* Section 3: AI Providers List */}
+      {/* AI Providers List */}
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-[#1e293b] shadow-2xs overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-[#1e293b] flex items-center justify-between">
           <div>
@@ -375,7 +377,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               AI Providers
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Connect Google Gemini or custom models for automated PRD generation.
+              Connect your own Google Gemini (Gemini 4 / 3.1) or OpenAI-compatible API key.
             </p>
           </div>
           <button
@@ -388,7 +390,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
 
-        {/* Providers Table / Cards */}
         <div className="divide-y divide-slate-100 dark:divide-[#1e293b]">
           {providers.map((p) => {
             const hasKey = Boolean(p.apiKey && p.apiKey.trim().length > 0);
@@ -398,7 +399,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{p.name}</span>
                     {p.isDefault && (
-                      <span className="text-[10px] uppercase font-bold bg-blue-50 dark:bg-blue-950/60 text-[#1d4ed8] dark:text-blue-400 px-2 py-0.5 rounded-full border border-blue-200/80 dark:border-blue-800">
+                      <span className="text-[10px] uppercase font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
                         Default
                       </span>
                     )}
@@ -415,12 +416,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       {hasKey ? (
                         <span className="text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Key configured</span>
+                          <span>Manual key configured</span>
                         </span>
                       ) : (
                         <span className="text-amber-600 dark:text-amber-400 flex items-center space-x-1">
                           <AlertCircle className="w-3.5 h-3.5" />
-                          <span>Key required</span>
+                          <span>Empty — enter key manually</span>
                         </span>
                       )}
                     </span>
@@ -428,6 +429,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-2 shrink-0">
+                  {hasKey && (
+                    <button
+                      onClick={() => handleClearProviderKey(p)}
+                      className="h-8 inline-flex items-center space-x-1 px-2.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/70 rounded-[6px] transition-colors"
+                      title="Clear saved API key"
+                    >
+                      <span>Clear Key</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => startEditProvider(p)}
                     className="h-8 inline-flex items-center space-x-1 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-[#172033] hover:bg-slate-200 dark:hover:bg-[#1e293b] rounded-[6px] transition-colors"
@@ -452,7 +463,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Section 4: Workspace Storage & Backup */}
+      {/* Workspace Storage & Backup */}
       <div className="bg-white dark:bg-[#0f172a] rounded-[10px] border border-slate-200 dark:border-[#1e293b] p-5 shadow-2xs space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -507,17 +518,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveProvider} className="p-6 space-y-4 text-xs">
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Provider Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={providerName}
-                  onChange={(e) => setProviderName(e.target.value)}
-                  className="w-full h-9 px-3 border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Provider Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={providerName}
+                    onChange={(e) => setProviderName(e.target.value)}
+                    className="w-full h-9 px-3 border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Provider Type
+                  </label>
+                  <select
+                    value={providerType}
+                    onChange={(e) => {
+                      const next = e.target.value as AIProviderType;
+                      setProviderType(next);
+                      if (next === 'gemini') setModel(DEFAULT_GEMINI_MODEL);
+                    }}
+                    className="w-full h-9 px-3 border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="gemini">Google Gemini (@google/genai)</option>
+                    <option value="openai-compatible">OpenAI-Compatible</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -532,15 +562,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   required
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. gemini-2.5-flash, gemini-2.0-flash"
+                  placeholder="e.g. gemini-4-hydrogen, gemini-3.1-flash-lite, gemini-4-neon"
                   className="w-full h-9 px-3 font-mono border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
                 />
+                {providerType === 'gemini' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className="text-[10px] text-slate-400">Quick select:</span>
+                    {RECOMMENDED_GEMINI_MODELS.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setModel(m.id)}
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                          model === m.id
+                            ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                            : 'bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-medium text-slate-700 dark:text-slate-300">
-                    API Key
+                    API Key (User Managed)
                   </label>
                   <a
                     href="https://aistudio.google.com/app/apikey"
@@ -556,7 +605,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type={showKey ? 'text' : 'password'}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="AIzaSy..."
+                    placeholder="Leave empty or paste your own API key (AIzaSy...)"
                     className="w-full h-9 pl-3 pr-9 font-mono border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
                   />
                   <button
@@ -569,7 +618,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
 
-              {/* Advanced toggle */}
               <div className="pt-1">
                 <button
                   type="button"
@@ -582,38 +630,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 {showAdvanced && (
                   <div className="mt-3 p-3 bg-slate-50 dark:bg-[#111827] rounded-[6px] border border-slate-200 dark:border-[#1e293b] space-y-3">
-                    <div>
-                      <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                        Temperature ({temperature})
-                      </label>
+                    {providerType !== 'gemini' && (
+                      <>
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                            Temperature ({temperature})
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={temperature}
+                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                            Custom Base URL (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={baseUrl}
+                            onChange={(e) => setBaseUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full h-8 px-2.5 text-xs font-mono border border-slate-200 dark:border-[#1e293b] rounded-[4px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100"
+                          />
+                        </div>
+                      </>
+                    )}
+                    {providerType === 'gemini' && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Gemini 4 models manage sampling and reasoning depth automatically via the <code className="font-mono">@google/genai</code> SDK.
+                      </p>
+                    )}
+                    <label className="flex items-center space-x-2 text-[11px] text-slate-700 dark:text-slate-300">
                       <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={temperature}
-                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                        className="w-full"
+                        type="checkbox"
+                        checked={isDefault}
+                        onChange={(e) => setIsDefault(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                        Custom Base URL (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={baseUrl}
-                        onChange={(e) => setBaseUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="w-full h-8 px-2.5 text-xs font-mono border border-slate-200 dark:border-[#1e293b] rounded-[4px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100"
-                      />
-                    </div>
+                      <span>Set as default provider</span>
+                    </label>
                   </div>
                 )}
               </div>
 
-              {/* Test Result Indicator */}
               {testResult && (
                 <div
                   className={`p-3 rounded-[6px] border text-xs ${
@@ -627,7 +691,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               )}
 
-              {/* Modal Actions */}
               <div className="pt-3 border-t border-slate-200 dark:border-[#1e293b] flex items-center justify-between">
                 <button
                   type="button"

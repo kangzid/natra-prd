@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { X, Sparkles, FolderPlus } from 'lucide-react';
-import type { ProjectType, Project } from '../../types';
+import { X, Sparkles, FolderPlus, Layers, Layout, Server } from 'lucide-react';
+import type { ProjectType, ProjectScope, Project } from '../../types';
 
 interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (data: { name: string; type: ProjectType; description?: string }) => Promise<Project>;
+  onCreate: (data: { name: string; type: ProjectType; scope: ProjectScope; description?: string }) => Promise<Project>;
   onCreatedAndOpenBuilder?: (project: Project) => void;
 }
 
@@ -20,6 +20,27 @@ const PROJECT_TYPES: { type: ProjectType; label: string; desc: string }[] = [
   { type: 'custom', label: 'Custom Project', desc: 'General product or experimental build' },
 ];
 
+const PROJECT_SCOPES: { scope: ProjectScope; label: string; rule: string; icon: React.ReactNode }[] = [
+  {
+    scope: 'fullstack',
+    label: 'Fullstack App',
+    rule: 'UI Kit (/kit/core-ui) + API Contracts required',
+    icon: <Layers className="w-4 h-4" />,
+  },
+  {
+    scope: 'frontend-only',
+    label: 'Frontend Only',
+    rule: 'UI Kit (/kit/core-ui) & Design System required',
+    icon: <Layout className="w-4 h-4" />,
+  },
+  {
+    scope: 'backend-only',
+    label: 'Backend Only',
+    rule: 'UI Kit skipped — focus on API & DB contracts',
+    icon: <Server className="w-4 h-4" />,
+  },
+];
+
 export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   isOpen,
   onClose,
@@ -28,11 +49,23 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [type, setType] = useState<ProjectType>('saas');
+  const [scope, setScope] = useState<ProjectScope>('fullstack');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
+
+  const handleTypeChange = (nextType: ProjectType) => {
+    setType(nextType);
+    if (nextType === 'api') {
+      setScope('backend-only');
+    } else if (nextType === 'landing-page') {
+      setScope('frontend-only');
+    } else if (scope === 'backend-only') {
+      setScope('fullstack');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent, openBuilderDirectly = false) => {
     e.preventDefault();
@@ -48,10 +81,12 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
       const newProj = await onCreate({
         name: name.trim(),
         type,
+        scope,
         description: description.trim(),
       });
       setName('');
       setDescription('');
+      setScope('fullstack');
       onClose();
       if (openBuilderDirectly && onCreatedAndOpenBuilder) {
         onCreatedAndOpenBuilder(newProj);
@@ -65,7 +100,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs">
-      <div 
+      <div
         id="new-project-modal-container"
         className="w-full max-w-lg bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-slate-200/90 dark:border-[#1e293b] overflow-hidden transition-all"
       >
@@ -76,7 +111,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">Create New Project</h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Initialize local architecture workspace</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Initialize 5-Stage Documentation Framework workspace</p>
             </div>
           </div>
           <button
@@ -105,7 +140,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Acme Cloud Dashboard, Natra HRIS"
+              placeholder="e.g. Acme Cloud Dashboard, KasFlow UMKM"
               className="w-full h-10 px-3.5 bg-white dark:bg-[#172033] border border-slate-200 dark:border-[#1e293b] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-xs sm:text-sm"
               autoFocus
             />
@@ -118,7 +153,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             <select
               id="project-type-select"
               value={type}
-              onChange={(e) => setType(e.target.value as ProjectType)}
+              onChange={(e) => handleTypeChange(e.target.value as ProjectType)}
               className="w-full h-10 px-3.5 bg-white dark:bg-[#172033] border border-slate-200 dark:border-[#1e293b] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 text-xs sm:text-sm"
             >
               {PROJECT_TYPES.map((pt) => (
@@ -127,6 +162,41 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Conditional UI Kit Rule: Project Scope Selector */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                Project Scope (UI Kit Rule)
+              </label>
+              <span className="text-[10px] text-slate-400">Controls Stage 4 UI Kit</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {PROJECT_SCOPES.map((item) => {
+                const selected = scope === item.scope;
+                return (
+                  <button
+                    key={item.scope}
+                    type="button"
+                    onClick={() => setScope(item.scope)}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col space-y-1 ${
+                      selected
+                        ? 'border-[#1d4ed8] dark:border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-[#1d4ed8] dark:text-blue-300'
+                        : 'border-slate-200 dark:border-[#1e293b] hover:bg-slate-50 dark:hover:bg-[#172033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1.5 font-semibold text-[11px]">
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </div>
+                    <p className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                      {item.rule}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div>
@@ -138,7 +208,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief context or notes. You'll detail this further in the PRD Wizard."
+              placeholder="Brief context or product idea. You will expand this in Stage 1 Master PRD."
               className="w-full p-3.5 bg-white dark:bg-[#172033] border border-slate-200 dark:border-[#1e293b] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-xs sm:text-sm"
             />
           </div>
@@ -168,7 +238,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               className="h-10 inline-flex items-center justify-center space-x-1.5 px-5 font-semibold text-white bg-[#1d4ed8] hover:bg-[#1e40af] rounded-full text-xs shadow-2xs disabled:opacity-50 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Create & Launch PRD Wizard</span>
+              <span>Create & Launch Master PRD</span>
             </button>
           </div>
         </form>

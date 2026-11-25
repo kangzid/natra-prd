@@ -10,12 +10,13 @@ export const projectRepo = {
     return db.projects.get(id);
   },
 
-  async create(data: { name: string; type: ProjectType; description?: string }): Promise<Project> {
+  async create(data: { name: string; type: ProjectType; scope?: Project['scope']; description?: string }): Promise<Project> {
     const now = new Date().toISOString();
     const newProject: Project = {
       id: 'proj-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
       name: data.name.trim(),
       type: data.type,
+      scope: data.scope || (data.type === 'api' ? 'backend-only' : 'fullstack'),
       description: data.description?.trim() || '',
       createdAt: now,
       updatedAt: now,
@@ -55,6 +56,9 @@ export const documentRepo = {
   async create(data: {
     projectId: string;
     builderId: string;
+    stage?: Document['stage'];
+    filePath?: string;
+    moduleKey?: string;
     templateVersion: string;
     title: string;
     content: string;
@@ -65,6 +69,9 @@ export const documentRepo = {
       id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
       projectId: data.projectId,
       builderId: data.builderId,
+      stage: data.stage,
+      filePath: data.filePath,
+      moduleKey: data.moduleKey,
       templateVersion: data.templateVersion,
       title: data.title.trim(),
       content: data.content,

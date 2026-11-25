@@ -187,11 +187,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white mt-3 sm:mt-4 mb-3 sm:mb-5 tracking-tight">
-            5
+            6
           </div>
 
           <div className="text-[11px] sm:text-xs font-semibold text-blue-600 dark:text-blue-400 truncate">
-            Modular Builders Catalog
+            5-Stage Docs Framework
           </div>
         </div>
       </div>

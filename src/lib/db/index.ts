@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { Project, Document, AIProviderConfig, AppSettings } from '../../types';
+import { DEFAULT_GEMINI_MODEL, LEGACY_GEMINI_MODELS } from '../ai/gemini';
 
 export class NatraDatabase extends Dexie {
   projects!: Table<Project, string>;
@@ -20,81 +21,40 @@ export class NatraDatabase extends Dexie {
 
 export const db = new NatraDatabase();
 
-const SAMPLE_PRD_CONTENT = `# Natra Flow — Product Requirements Document
+const SAMPLE_PRD_CONTENT = `# PRD — Natra Flow
 
-## 01 — Product Overview
-- **Product Name**: Natra Flow
-- **Product Summary**: A lightweight, local-first documentation engine that translates raw developer notes into structured architectural documents.
-- **Problem Statement**: Technical founders and developers lose hours authoring documentation from scratch or dealing with clunky cloud platforms.
-- **Goals**:
-  - Enable instant offline document authoring and PRD generation.
-  - Store all projects strictly inside the user's browser via IndexedDB.
-  - Support user-managed Gemini and custom AI models.
-- **Non-Goals**:
-  - Cloud database synchronization for MVP.
-  - Centralized user authentication or account management.
+**Product Name:** Natra Flow  
+**Product Type:** SaaS Platform  
+**Platform:** Web App / PWA-ready  
+**Project Scope:** Fullstack  
+**Target Market:** Global Developers & Product Teams  
+**Status:** Product Definition  
+**Version:** 2.0.0  
 
-## 02 — User Persona
-- **Primary Persona**: Indie Hacker / Solo Developer who wants to quickly generate clear technical specifications before writing code.
-- **Secondary Persona**: Technical Product Manager drafting structured PRDs for engineering handoffs.
-- **User Needs**:
-  - Structured guidance without rigid form bureaucracy.
-  - High fidelity Markdown output ready for repository commit.
-  - Absolute privacy of credentials and project data.
+---
 
-## 03 — Product Scope
-- **MVP Scope**:
-  - Local project catalog with creation, editing, and deletion.
-  - 8-step PRD multi-step wizard.
-  - Direct browser API generation using Gemini Flash.
-  - Live split-view Markdown editor with autosave and export.
-- **Out of Scope**:
-  - Real-time team collaborative editing.
-  - Automated deployment triggers.
+# 1. Product Overview
 
-## 04 — Feature Specification
-### Feature: Local-First Document Storage
-- **Description**: All projects, documents, and API keys are stored in IndexedDB using Dexie.
-- **User Story**: As a developer, I want my data to persist locally in my browser without requiring an external server or account.
-- **Acceptance Criteria**:
-  - Documents remain accessible after page refresh or browser restart.
-  - Data can be exported as JSON backup and re-imported anytime.
-- **Priority**: High (P0)
+## 1.1 Apa itu Natra Flow?
+**Natra Flow adalah sistem dokumentasi arsitektur lokal-pertama (*local-first*) yang mengubah ide produk mentah menjadi Master PRD, 14 dokumen modular, alur fitur interaktif, dan spesifikasi UI/UX yang siap dieksekusi oleh AI Coding Agent.**
 
-### Feature: Multi-Step PRD Wizard
-- **Description**: An 8-step structured questionnaire prompting for product context, flows, and edge cases.
-- **User Story**: As a builder, I want guided questions that help me articulate the product comprehensively.
-- **Priority**: High (P0)
+### What It Is NOT (Batasan Eksplisit)
+- Bukan pengganti Enterprise Jira / Confluence dengan konfigurasi birokratis.
+- Bukan platform kolaborasi cloud real-time dengan ketergantungan server database eksternal untuk MVP.
 
-## 05 — User Flow
-\`\`\`
-1. User enters Natra Builder
-2. User clicks "New Project" -> Enters title and project type
-3. User selects "PRD Builder" -> Completes guided questions
-4. User configures Gemini API Key & Model
-5. User clicks "Generate PRD" -> AI streams or produces structured Markdown
-6. User reviews, edits in live split-view, and exports as .md
-\`\`\`
+### Core Philosophy
+> **Capture Idea $\\rightarrow$ Master PRD $\\rightarrow$ Modular Decomposition (14 Docs) $\\rightarrow$ Feature Flows & UI Kit $\\rightarrow$ Agent Implementation Ready**
 
-## 06 — Data Model
-- **Project**: { id, name, type, description, createdAt, updatedAt }
-- **Document**: { id, projectId, builderId, templateVersion, title, content, createdAt, updatedAt }
-- **AIProviderConfig**: { id, name, type, apiKey, defaultModel, createdAt }
+---
 
-## 07 — Edge Cases
-- **Missing API Key**: Prompt clear inline notification directing user to Settings or quick modal.
-- **Model Deprecation / Invalid Name**: Display provider response cleanly and allow instant inline model correction.
-- **Offline Generation Attempt**: Friendly notification explaining that local documents can be edited, but AI generation requires an active network.
-
-## 08 — Non-Functional Requirements
-- **Performance**: Instant UI transitions (<16ms frame budgeting).
-- **Security**: API keys never leave the client browser, strictly zero transmission to third-party telemetry.
-- **Reliability**: Automatic debounced saving on every keystroke.
-
-## 09 — Release Phases
-- **Phase 1 (MVP)**: PRD Builder vertical slice with Google Gemini and local persistence.
-- **Phase 2**: Documentation pipeline expansion (Feature Decomposition, Domain Model, UI/UX Specs).
-- **Phase 3**: Custom Builder marketplace & community templates.
+# 14. Non-Functional Requirements (7 Software Quality Pillars)
+1. **Scalability**: Query lokal terindeks untuk ratusan dokumen per workspace.
+2. **Maintainability**: Arsitektur modular berbasis fitur dengan kontrak TypeScript ketat (tanpa \`any\`).
+3. **Usability**: Rasio kontras WCAG AA ($\\ge 4.5:1$), navigasi keyboard penuh, dan desain responsif *mobile-first*.
+4. **Reliability & Availability**: Ketahanan offline penuh (*IndexedDB Local-First*) dengan autosave terdebounced.
+5. **Security & Privacy**: Kunci API dikelola manual oleh pengguna dan terisolasi pada penyimpanan lokal browser.
+6. **Performance & Efficiency**: Waktu muat awal FCP $\\le 1.0\\text{s}$ dan respon aksi UI $\\le 100\\text{ms}$.
+7. **Flexibility & Extensibility**: Pipeline generator bersifat modular sehingga tahap dokumentasi baru dapat ditambahkan secara *plug-and-play*.
 `;
 
 export async function initializeDatabase(): Promise<void> {
@@ -109,20 +69,28 @@ export async function initializeDatabase(): Promise<void> {
       });
     }
 
-    const providerCount = await db.providers.count();
-    if (providerCount === 0) {
+    const providers = await db.providers.toArray();
+    if (providers.length === 0) {
       await db.providers.add({
         id: 'provider-gemini-default',
         name: 'Google Gemini',
         type: 'gemini',
-        apiKey: '',
-        defaultModel: 'gemini-2.5-flash',
-        temperature: 0.7,
-        maxTokens: 8192,
+        apiKey: '', // Intentionally blank so users enter their own Gemini API key manually
+        defaultModel: DEFAULT_GEMINI_MODEL,
         isDefault: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+    } else {
+      // Automatically upgrade deprecated/legacy Gemini model identifiers to the active Gemini 4 model
+      for (const p of providers) {
+        if (p.type === 'gemini' && LEGACY_GEMINI_MODELS.has((p.defaultModel || '').trim().toLowerCase())) {
+          await db.providers.update(p.id, {
+            defaultModel: DEFAULT_GEMINI_MODEL,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
     }
 
     // Check if initial sample projects have already been seeded previously
@@ -141,7 +109,8 @@ export async function initializeDatabase(): Promise<void> {
         id: sampleProjectId,
         name: 'Natra Flow Documentation Engine',
         type: 'saas',
-        description: 'Sample reference project showcasing structured PRD generation with local persistence.',
+        scope: 'fullstack',
+        description: 'Sample reference project demonstrating the 5-Stage Master Documentation Framework.',
         createdAt: now,
         updatedAt: now,
       });
@@ -150,20 +119,25 @@ export async function initializeDatabase(): Promise<void> {
         id: 'doc-sample-prd-1',
         projectId: sampleProjectId,
         builderId: 'prd-builder',
-        templateVersion: '1.0.0',
-        title: 'Natra Flow — Core PRD',
+        stage: 'prd',
+        filePath: 'docs/PRD.md',
+        moduleKey: 'PRD',
+        templateVersion: '2.0.0',
+        title: 'Natra Flow — Master PRD (docs/PRD.md)',
         content: SAMPLE_PRD_CONTENT,
         inputs: {
           productName: 'Natra Flow',
-          productDescription: 'A lightweight, local-first documentation engine.',
+          productDescription: 'A local-first documentation engine transforming raw ideas into Master PRD, 14 modular specs, flow-app guides, and UI Kit blueprints.',
           productType: 'saas',
-          platform: 'Web Application',
-          productGoal: 'Generate structured documentation offline-first.',
-          problemStatement: 'Developers spend too much time on manual documentation setup.',
-          targetUser: 'Indie Hackers, Technical Founders, and Developers',
-          coreFeatures: 'Local storage, Multi-step PRD form, Markdown editor, Export .md',
-          mvpScope: 'PRD Builder vertical slice with Dexie persistence.',
-          successCriteria: 'User can create and export a full PRD in under 5 minutes.',
+          projectScope: 'fullstack',
+          platform: 'Web App / PWA-ready',
+          productGoal: 'Deliver lossless context from product idea to coding-agent-ready documentation.',
+          problemStatement: 'Product specs and architecture notes are fragmented across chats and spreadsheets.',
+          targetUser: 'Indie Hackers, Technical Founders, and Software Architects',
+          coreFeatures: '20-section Master PRD Wizard, 14 Modular Decomposition Files, Feature Flow Builder, Conditional UI Kit Spec, ZIP docs/ Export',
+          mvpScope: 'Master PRD + Modular Decomposition + Local IndexedDB Persistence.',
+          successCriteria: 'Users produce a full docs/ folder blueprint in under 10 minutes.',
+          outputLanguage: 'id',
         },
         createdAt: now,
         updatedAt: now,
