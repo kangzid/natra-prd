@@ -1,13 +1,13 @@
 import type { AIProviderConfig } from '../../types';
 import type { AIProvider, ConnectionTestResult, GenerateOptions } from './types';
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-4-hydrogen';
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 
 export const RECOMMENDED_GEMINI_MODELS = [
-  { id: 'gemini-4-hydrogen', label: 'gemini-4-hydrogen', desc: 'Fast & balanced (Default)' },
-  { id: 'gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite', desc: 'Ultra-lightweight' },
-  { id: 'gemini-4-neon', label: 'gemini-4-neon', desc: 'Complex reasoning' },
-  { id: 'gemini-4-carbon', label: 'gemini-4-carbon', desc: 'Deep architecture reasoning' },
+  { id: 'gemini-2.5-flash', label: 'gemini-2.5-flash', desc: 'Free • Stable & Fast (Default)' },
+  { id: 'gemini-3.5-flash-lite', label: 'gemini-3.5-flash-lite', desc: 'Free • Ultra-Fast Lite' },
+  { id: 'gemini-4-hydrogen', label: 'gemini-4-hydrogen', desc: 'Free • Gemini 4 Flash' },
+  { id: 'gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite', desc: 'Free • Lightweight' },
 ] as const;
 
 export const LEGACY_GEMINI_MODELS = new Set([
@@ -17,8 +17,7 @@ export const LEGACY_GEMINI_MODELS = new Set([
   'gemini-2.0-flash',
   'gemini-2.0-pro',
   'gemini-2.0-flash-thinking',
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
+  'gemini-2.5-flash-lite',
 ]);
 
 export function normalizeGeminiModel(model?: string): string {
@@ -34,7 +33,8 @@ export class GeminiProvider implements AIProvider {
   name = 'Google Gemini';
 
   async testConnection(config: AIProviderConfig): Promise<ConnectionTestResult> {
-    if (!config.apiKey || !config.apiKey.trim()) {
+    const cleanKey = (config.apiKey || '').replace(/\s+/g, '');
+    if (!cleanKey) {
       return {
         success: false,
         message: 'No API key provided',
@@ -43,7 +43,6 @@ export class GeminiProvider implements AIProvider {
     }
 
     const model = (config.defaultModel || DEFAULT_GEMINI_MODEL).trim();
-    const cleanKey = config.apiKey.trim();
 
     try {
       const response = await fetch('/api/gemini/test', {
@@ -55,9 +54,19 @@ export class GeminiProvider implements AIProvider {
         }),
       });
 
-      const data = await response.json().catch(() => null);
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
 
       if (!response.ok || !data?.success) {
+        if (response.status === 404 && !data) {
+          return {
+            success: false,
+            message: 'Backend endpoint /api/gemini/test not found (404)',
+            details:
+              'Ensure the app is deployed with the /api serverless functions (Vercel) or running via server.ts (npm run dev).',
+          };
+        }
+
         return {
           success: false,
           message: data?.message || `Connection failed (${response.status})`,
@@ -68,6 +77,7 @@ export class GeminiProvider implements AIProvider {
       return {
         success: true,
         message: data.message || `Successfully connected to Google Gemini (${model})!`,
+        details: data.details,
       };
     } catch (err: any) {
       return {
@@ -79,14 +89,14 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateText(config: AIProviderConfig, options: GenerateOptions): Promise<string> {
-    if (!config.apiKey || !config.apiKey.trim()) {
+    const cleanKey = (config.apiKey || '').replace(/\s+/g, '');
+    if (!cleanKey) {
       throw new Error(
         'Google Gemini API Key is empty. Please enter your own API key manually in Settings or the Builder panel.'
       );
     }
 
     const model = (options.model || config.defaultModel || DEFAULT_GEMINI_MODEL).trim();
-    const cleanKey = config.apiKey.trim();
     const useStreaming = Boolean(options.onStreamChunk);
 
     const response = await fetch('/api/gemini/generate', {
@@ -104,7 +114,13 @@ export class GeminiProvider implements AIProvider {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
+      const contentType = response.headers.get('content-type') || '';
+      const errorData = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+      if (response.status === 404 && !errorData) {
+        throw new Error(
+          'Backend endpoint /api/gemini/generate returned 404. Redeploy with /api serverless functions (Vercel) or run via server.ts.'
+        );
+      }
       const errMsg = errorData?.error || errorData?.details || response.statusText;
       throw new Error(errMsg || `Gemini API error (${response.status})`);
     }

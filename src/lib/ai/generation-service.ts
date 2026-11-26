@@ -1,6 +1,7 @@
 import type { Project, AIProviderConfig, Builder } from '../../types';
 import { getAIProviderInstance } from './index';
 import { DEFAULT_GEMINI_MODEL } from './gemini';
+import { DEFAULT_GROQ_MODEL } from './groq';
 import { constructPRDPrompt } from '../../templates/prd-template';
 import { FRAMEWORK_SYSTEM_PROMPT } from '../../templates/framework-templates';
 
@@ -21,6 +22,10 @@ export interface FrameworkGenerationParams {
   onStreamChunk?: (chunk: string, fullText: string) => void;
 }
 
+function getDefaultModelForProvider(type: string): string {
+  return type === 'groq' ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
+}
+
 export async function generateDocumentContent(params: GenerationParams): Promise<string> {
   const { project, builder, inputs, providerConfig, modelOverride, onStreamChunk } = params;
 
@@ -28,7 +33,7 @@ export async function generateDocumentContent(params: GenerationParams): Promise
     throw new Error('API Key is empty. Please enter your own API key manually in Settings or the Builder panel.');
   }
 
-  const model = (modelOverride || providerConfig.defaultModel || DEFAULT_GEMINI_MODEL).trim();
+  const model = (modelOverride || providerConfig.defaultModel || getDefaultModelForProvider(providerConfig.type)).trim();
   const provider = getAIProviderInstance(providerConfig.type);
 
   const prompt = constructPRDPrompt(inputs, project.name, project.type, project.scope);
@@ -53,7 +58,7 @@ export async function generateFrameworkDocument(params: FrameworkGenerationParam
     throw new Error('API Key is empty. Please enter your own API key manually in Settings or the Pipeline AI bar.');
   }
 
-  const model = (modelOverride || providerConfig.defaultModel || DEFAULT_GEMINI_MODEL).trim();
+  const model = (modelOverride || providerConfig.defaultModel || getDefaultModelForProvider(providerConfig.type)).trim();
   const provider = getAIProviderInstance(providerConfig.type);
 
   const rawOutput = await provider.generateText(providerConfig, {

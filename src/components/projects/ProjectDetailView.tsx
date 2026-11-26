@@ -44,6 +44,7 @@ import {
 } from '../../templates/framework-templates';
 import { generateFrameworkDocument } from '../../lib/ai/generation-service';
 import { DEFAULT_GEMINI_MODEL, RECOMMENDED_GEMINI_MODELS, normalizeGeminiModel } from '../../lib/ai/gemini';
+import { DEFAULT_GROQ_MODEL, RECOMMENDED_GROQ_MODELS, normalizeGroqModel } from '../../lib/ai/groq';
 import { exportMarkdownFile, exportJsonFile, exportProjectDocsZip, copyToClipboard, sanitizeFilename } from '../../lib/export';
 import { documentRepo, exportProjectJson, providerRepo } from '../../lib/db/repository';
 
@@ -121,11 +122,13 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   // Inline AI Config (Manual User API Key + Active Model)
   const defaultProv = providers.find((p) => p.isDefault) || providers[0];
   const [selectedProviderId, setSelectedProviderId] = useState<string>(defaultProv?.id || '');
+  const activeSelectedProvider = providers.find((p) => p.id === selectedProviderId) || defaultProv;
+  const isGroqProvider = activeSelectedProvider?.type === 'groq';
   const [apiKeyInput, setApiKeyInput] = useState<string>(defaultProv?.apiKey || '');
   const [modelInput, setModelInput] = useState<string>(
-    defaultProv?.type === 'gemini'
-      ? normalizeGeminiModel(defaultProv?.defaultModel)
-      : defaultProv?.defaultModel || DEFAULT_GEMINI_MODEL
+    defaultProv?.type === 'groq'
+      ? normalizeGroqModel(defaultProv?.defaultModel)
+      : normalizeGeminiModel(defaultProv?.defaultModel)
   );
   const [showApiPanel, setShowApiPanel] = useState<boolean>(false);
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
@@ -136,7 +139,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       setSelectedProviderId(prov.id);
       setApiKeyInput(prov.apiKey || '');
       setModelInput(
-        prov.type === 'gemini' ? normalizeGeminiModel(prov.defaultModel) : prov.defaultModel || DEFAULT_GEMINI_MODEL
+        prov.type === 'groq'
+          ? normalizeGroqModel(prov.defaultModel)
+          : normalizeGeminiModel(prov.defaultModel)
       );
     }
   }, [providers, selectedProviderId, defaultProv]);
@@ -190,11 +195,15 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
 
     const cleanKey = apiKeyInput.trim();
-    const cleanModel = modelInput.trim() || DEFAULT_GEMINI_MODEL;
+    const fallbackModel = activeProv.type === 'groq' ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
+    const cleanModel = modelInput.trim() || fallbackModel;
 
     if (!cleanKey) {
       setShowApiPanel(true);
-      showToast('API Key is empty. Please enter your own Gemini API key manually in the AI Config bar above.', 'error');
+      showToast(
+        `API Key is empty. Please enter your own ${activeProv.type === 'groq' ? 'Groq' : 'Gemini'} API key manually in the AI Config bar above.`,
+        'error'
+      );
       return null;
     }
 
@@ -502,10 +511,11 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const handleSaveInlineApi = async () => {
     const activeProv = providers.find((p) => p.id === selectedProviderId) || defaultProv;
     if (!activeProv) return;
+    const fallbackModel = activeProv.type === 'groq' ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
     await providerRepo.save({
       ...activeProv,
       apiKey: apiKeyInput.trim(),
-      defaultModel: modelInput.trim() || DEFAULT_GEMINI_MODEL,
+      defaultModel: modelInput.trim() || fallbackModel,
     });
     await onRefreshData();
     setShowApiPanel(false);
@@ -821,13 +831,34 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         {/* Collapsible Manual API Key & Active Model Panel */}
         {showApiPanel && (
           <div className="pt-4 border-t border-slate-100 dark:border-[#1e293b] grid grid-cols-1 md:grid-cols-12 gap-3 items-end text-xs">
-            <div className="md:col-span-5 space-y-1">
+            <div className="md:col-span-2 space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block">
+                Provider
+              </label>
+              <select
+                value={selectedProviderId}
+                onChange={(e) => setSelectedProviderId(e.target.value)}
+                className="w-full h-9 px-2.5 border border-slate-200 dark:border-[#1e293b] rounded-xl bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
+              >
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-4 space-y-1">
               <div className="flex items-center justify-between">
                 <label className="font-semibold text-slate-700 dark:text-slate-300">
-                  Your Gemini API Key (Manual)
+                  {isGroqProvider ? 'Groq API Key (Manual)' : 'Gemini API Key (Manual)'}
                 </label>
                 <a
-                  href="https://aistudio.google.com/app/apikey"
+                  href={
+                    isGroqProvider
+                      ? 'https://console.groq.com/keys'
+                      : 'https://aistudio.google.com/app/apikey'
+                  }
                   target="_blank"
                   rel="noreferrer"
                   className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
@@ -840,7 +871,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder="Paste your API key (AIzaSy...)"
+                  placeholder={isGroqProvider ? 'Paste Groq key (gsk_...)' : 'Paste Gemini key (AIza... / AQ....)'}
                   className="w-full h-9 pl-3 pr-9 font-mono border border-slate-200 dark:border-[#1e293b] rounded-xl bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
                 />
                 <button
@@ -853,22 +884,23 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </div>
             </div>
 
-            <div className="md:col-span-5 space-y-1">
+            <div className="md:col-span-4 space-y-1">
               <label className="font-semibold text-slate-700 dark:text-slate-300 block">
-                Model Name
+                Model Name (Free Tier)
               </label>
               <input
                 type="text"
                 value={modelInput}
                 onChange={(e) => setModelInput(e.target.value)}
-                placeholder="gemini-4-hydrogen"
+                placeholder={isGroqProvider ? 'openai/gpt-oss-120b' : 'gemini-2.5-flash'}
                 className="w-full h-9 px-3 font-mono border border-slate-200 dark:border-[#1e293b] rounded-xl bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
               />
               <div className="flex flex-wrap gap-1 pt-1">
-                {RECOMMENDED_GEMINI_MODELS.map((m) => (
+                {(isGroqProvider ? RECOMMENDED_GROQ_MODELS : RECOMMENDED_GEMINI_MODELS).map((m) => (
                   <button
                     key={m.id}
                     type="button"
+                    title={m.desc}
                     onClick={() => setModelInput(m.id)}
                     className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
                       modelInput === m.id

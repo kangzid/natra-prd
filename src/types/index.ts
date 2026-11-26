@@ -124,7 +124,7 @@ export interface Document {
   updatedAt: string;
 }
 
-export type AIProviderType = 'gemini' | 'openai-compatible' | 'custom';
+export type AIProviderType = 'gemini' | 'groq';
 
 export interface AIProviderConfig {
   id: string;

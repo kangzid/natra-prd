@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Project, Document, AIProviderConfig, AppSettings } from '../../types';
 import { DEFAULT_GEMINI_MODEL, LEGACY_GEMINI_MODELS } from '../ai/gemini';
+import { DEFAULT_GROQ_MODEL, normalizeGroqModel } from '../ai/groq';
 
 export class NatraDatabase extends Dexie {
   projects!: Table<Project, string>;
@@ -70,26 +71,71 @@ export async function initializeDatabase(): Promise<void> {
     }
 
     const providers = await db.providers.toArray();
+    const nowIso = new Date().toISOString();
     if (providers.length === 0) {
-      await db.providers.add({
-        id: 'provider-gemini-default',
-        name: 'Google Gemini',
-        type: 'gemini',
-        apiKey: '', // Intentionally blank so users enter their own Gemini API key manually
-        defaultModel: DEFAULT_GEMINI_MODEL,
-        isDefault: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      await db.providers.bulkAdd([
+        {
+          id: 'provider-gemini-default',
+          name: 'Google Gemini',
+          type: 'gemini',
+          apiKey: '', // Intentionally blank so users enter their own Gemini API key manually
+          defaultModel: DEFAULT_GEMINI_MODEL,
+          isDefault: true,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        },
+        {
+          id: 'provider-groq-default',
+          name: 'Groq',
+          type: 'groq',
+          apiKey: '', // Intentionally blank so users enter their own Groq API key manually
+          defaultModel: DEFAULT_GROQ_MODEL,
+          isDefault: false,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        },
+      ]);
     } else {
-      // Automatically upgrade deprecated/legacy Gemini model identifiers to the active Gemini 4 model
+      let hasGroq = false;
       for (const p of providers) {
-        if (p.type === 'gemini' && LEGACY_GEMINI_MODELS.has((p.defaultModel || '').trim().toLowerCase())) {
+        const rawType = p.type as string;
+        if (rawType === 'gemini' && LEGACY_GEMINI_MODELS.has((p.defaultModel || '').trim().toLowerCase())) {
           await db.providers.update(p.id, {
             defaultModel: DEFAULT_GEMINI_MODEL,
-            updatedAt: new Date().toISOString(),
+            updatedAt: nowIso,
           });
+        } else if (rawType === 'openai-compatible' || rawType === 'custom') {
+          hasGroq = true;
+          await db.providers.update(p.id, {
+            name: /openai/i.test(p.name) ? 'Groq' : p.name,
+            type: 'groq',
+            baseUrl: undefined,
+            defaultModel: normalizeGroqModel(p.defaultModel),
+            updatedAt: nowIso,
+          });
+        } else if (rawType === 'groq') {
+          hasGroq = true;
+          const normalized = normalizeGroqModel(p.defaultModel);
+          if (normalized !== p.defaultModel) {
+            await db.providers.update(p.id, {
+              defaultModel: normalized,
+              updatedAt: nowIso,
+            });
+          }
         }
+      }
+
+      if (!hasGroq) {
+        await db.providers.add({
+          id: 'provider-groq-default',
+          name: 'Groq',
+          type: 'groq',
+          apiKey: '',
+          defaultModel: DEFAULT_GROQ_MODEL,
+          isDefault: false,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        });
       }
     }
 

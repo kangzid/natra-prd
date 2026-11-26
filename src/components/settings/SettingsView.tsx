@@ -24,6 +24,7 @@ import type { AIProviderConfig, AIProviderType } from '../../types';
 import { providerRepo, exportAllDataJson, importAllDataJson, clearAllLocalData } from '../../lib/db/repository';
 import { getAIProviderInstance } from '../../lib/ai';
 import { DEFAULT_GEMINI_MODEL, RECOMMENDED_GEMINI_MODELS, normalizeGeminiModel } from '../../lib/ai/gemini';
+import { DEFAULT_GROQ_MODEL, RECOMMENDED_GROQ_MODELS, normalizeGroqModel } from '../../lib/ai/groq';
 import { exportJsonFile } from '../../lib/export';
 import type { ThemeMode } from '../../lib/theme';
 
@@ -51,7 +52,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [providerName, setProviderName] = useState('');
   const [providerType, setProviderType] = useState<AIProviderType>('gemini');
   const [apiKey, setApiKey] = useState('');
-  const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState(DEFAULT_GEMINI_MODEL);
   const [temperature, setTemperature] = useState(0.7);
   const [isDefault, setIsDefault] = useState(false);
@@ -62,18 +62,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const startEditProvider = (p: AIProviderConfig) => {
+    const resolvedType: AIProviderType = p.type === 'groq' ? 'groq' : 'gemini';
     setEditingProvider(p);
     setIsAddingNew(false);
     setProviderName(p.name);
-    setProviderType(p.type);
+    setProviderType(resolvedType);
     setApiKey(p.apiKey || '');
-    setBaseUrl(p.baseUrl || '');
-    setModel(p.type === 'gemini' ? normalizeGeminiModel(p.defaultModel) : p.defaultModel);
+    setModel(
+      resolvedType === 'groq'
+        ? normalizeGroqModel(p.defaultModel)
+        : normalizeGeminiModel(p.defaultModel)
+    );
     setTemperature(p.temperature ?? 0.7);
     setIsDefault(Boolean(p.isDefault));
     setTestResult(null);
     setShowKey(false);
-    setShowAdvanced(Boolean(p.baseUrl));
+    setShowAdvanced(false);
   };
 
   const startNewProvider = () => {
@@ -82,7 +86,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setProviderName('Google Gemini');
     setProviderType('gemini');
     setApiKey('');
-    setBaseUrl('');
     setModel(DEFAULT_GEMINI_MODEL);
     setTemperature(0.7);
     setIsDefault(providers.length === 0);
@@ -110,13 +113,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTestResult(null);
 
     try {
+      const fallbackModel = providerType === 'groq' ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
       const tempConfig: AIProviderConfig = {
         id: editingProvider?.id || 'temp',
         name: providerName,
         type: providerType,
         apiKey: apiKey.trim(),
-        baseUrl: baseUrl.trim(),
-        defaultModel: model.trim() || DEFAULT_GEMINI_MODEL,
+        defaultModel: model.trim() || fallbackModel,
         temperature,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -139,13 +142,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSaveProvider = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const fallbackModel = providerType === 'groq' ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
       await providerRepo.save({
         id: editingProvider?.id,
         name: providerName.trim(),
         type: providerType,
         apiKey: apiKey.trim(),
-        baseUrl: baseUrl.trim() || undefined,
-        defaultModel: model.trim() || DEFAULT_GEMINI_MODEL,
+        baseUrl: undefined,
+        defaultModel: model.trim() || fallbackModel,
         temperature,
         isDefault,
       });
@@ -365,7 +369,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </h2>
         </div>
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-          API keys stay blank by default—enter your own Gemini key manually. Credentials are saved strictly in your browser IndexedDB and executed via the modern <code className="font-mono">@google/genai</code> SDK endpoint.
+          API keys stay blank by default—enter your own Google Gemini or Groq free-tier key manually. Credentials are stored strictly in your browser IndexedDB.
         </p>
       </div>
 
@@ -377,7 +381,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               AI Providers
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Connect your own Google Gemini (Gemini 4 / 3.1) or OpenAI-compatible API key.
+              Connect your own free-tier Google Gemini (@google/genai) or Groq LPU API key.
             </p>
           </div>
           <button
@@ -540,12 +544,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onChange={(e) => {
                       const next = e.target.value as AIProviderType;
                       setProviderType(next);
-                      if (next === 'gemini') setModel(DEFAULT_GEMINI_MODEL);
+                      setTestResult(null);
+                      if (next === 'gemini') {
+                        setModel(DEFAULT_GEMINI_MODEL);
+                        if (!providerName || providerName === 'Groq') setProviderName('Google Gemini');
+                      } else {
+                        setModel(DEFAULT_GROQ_MODEL);
+                        if (!providerName || providerName === 'Google Gemini') setProviderName('Groq');
+                      }
                     }}
                     className="w-full h-9 px-3 border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
                   >
-                    <option value="gemini">Google Gemini (@google/genai)</option>
-                    <option value="openai-compatible">OpenAI-Compatible</option>
+                    <option value="gemini">Google Gemini (@google/genai • Free Tier)</option>
+                    <option value="groq">Groq (Free Tier LPU)</option>
                   </select>
                 </div>
               </div>
@@ -555,35 +566,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <label className="block font-medium text-slate-700 dark:text-slate-300">
                     Model Identifier
                   </label>
-                  <span className="text-[10px] text-slate-400">Manual input allowed</span>
+                  <span className="text-[10px] text-slate-400">Free models prioritized • Manual input allowed</span>
                 </div>
                 <input
                   type="text"
                   required
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. gemini-4-hydrogen, gemini-3.1-flash-lite, gemini-4-neon"
+                  placeholder={
+                    providerType === 'groq'
+                      ? 'e.g. openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.8-27b'
+                      : 'e.g. gemini-2.5-flash, gemini-3.5-flash-lite, gemini-4-hydrogen'
+                  }
                   className="w-full h-9 px-3 font-mono border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
                 />
-                {providerType === 'gemini' && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[10px] text-slate-400">Quick select:</span>
-                    {RECOMMENDED_GEMINI_MODELS.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setModel(m.id)}
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-colors ${
-                          model === m.id
-                            ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                            : 'bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[10px] text-slate-400">Free models:</span>
+                  {(providerType === 'groq' ? RECOMMENDED_GROQ_MODELS : RECOMMENDED_GEMINI_MODELS).map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      title={m.desc}
+                      onClick={() => setModel(m.id)}
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                        model === m.id
+                          ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                          : 'bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -592,12 +606,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     API Key (User Managed)
                   </label>
                   <a
-                    href="https://aistudio.google.com/app/apikey"
+                    href={
+                      providerType === 'groq'
+                        ? 'https://console.groq.com/keys'
+                        : 'https://aistudio.google.com/app/apikey'
+                    }
                     target="_blank"
                     rel="noreferrer"
                     className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    Get Gemini API Key ↗
+                    {providerType === 'groq' ? 'Get Groq Free API Key ↗' : 'Get Gemini API Key ↗'}
                   </a>
                 </div>
                 <div className="relative">
@@ -605,7 +623,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type={showKey ? 'text' : 'password'}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Leave empty or paste your own API key (AIzaSy...)"
+                    placeholder={
+                      providerType === 'groq'
+                        ? 'Leave empty or paste your Groq API key (gsk_...)'
+                        : 'Leave empty or paste your Gemini API key (AIza... / AQ....)'
+                    }
                     className="w-full h-9 pl-3 pr-9 font-mono border border-slate-200 dark:border-[#1e293b] rounded-[6px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500"
                   />
                   <button
@@ -630,37 +652,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 {showAdvanced && (
                   <div className="mt-3 p-3 bg-slate-50 dark:bg-[#111827] rounded-[6px] border border-slate-200 dark:border-[#1e293b] space-y-3">
-                    {providerType !== 'gemini' && (
-                      <>
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                            Temperature ({temperature})
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            value={temperature}
-                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                            Custom Base URL (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={baseUrl}
-                            onChange={(e) => setBaseUrl(e.target.value)}
-                            placeholder="https://..."
-                            className="w-full h-8 px-2.5 text-xs font-mono border border-slate-200 dark:border-[#1e293b] rounded-[4px] bg-white dark:bg-[#172033] text-slate-900 dark:text-slate-100"
-                          />
-                        </div>
-                      </>
-                    )}
-                    {providerType === 'gemini' && (
+                    {providerType === 'groq' ? (
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                          Temperature ({temperature})
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={temperature}
+                          onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                          className="w-full"
+                        />
+                      </div>
+                    ) : (
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
                         Gemini 4 models manage sampling and reasoning depth automatically via the <code className="font-mono">@google/genai</code> SDK.
                       </p>

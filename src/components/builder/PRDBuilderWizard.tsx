@@ -14,6 +14,7 @@ import type { Project, Document, AIProviderConfig, PRDFormInputs, ProjectScope }
 import { prdBuilder } from '../../builders/registry';
 import { generateDocumentContent } from '../../lib/ai/generation-service';
 import { DEFAULT_GEMINI_MODEL, RECOMMENDED_GEMINI_MODELS, normalizeGeminiModel } from '../../lib/ai/gemini';
+import { DEFAULT_GROQ_MODEL, RECOMMENDED_GROQ_MODELS, normalizeGroqModel } from '../../lib/ai/groq';
 import { documentRepo, projectRepo, providerRepo } from '../../lib/db/repository';
 
 interface PRDBuilderWizardProps {
@@ -152,11 +153,13 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
 
   const defaultProv = providers.find((p) => p.isDefault) || providers[0];
   const [selectedProviderId, setSelectedProviderId] = useState<string>(defaultProv?.id || '');
+  const selectedProvider = providers.find((p) => p.id === selectedProviderId) || defaultProv;
+  const isGroqSelected = selectedProvider?.type === 'groq';
   const [apiKeyInput, setApiKeyInput] = useState<string>(defaultProv?.apiKey || '');
   const [modelInput, setModelInput] = useState<string>(
-    defaultProv?.type === 'gemini'
-      ? normalizeGeminiModel(defaultProv?.defaultModel)
-      : defaultProv?.defaultModel || DEFAULT_GEMINI_MODEL
+    defaultProv?.type === 'groq'
+      ? normalizeGroqModel(defaultProv?.defaultModel)
+      : normalizeGeminiModel(defaultProv?.defaultModel)
   );
   const [showApiKey, setShowApiKey] = useState(false);
 
@@ -169,7 +172,9 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
     if (prov) {
       setApiKeyInput(prov.apiKey || '');
       setModelInput(
-        prov.type === 'gemini' ? normalizeGeminiModel(prov.defaultModel) : prov.defaultModel || DEFAULT_GEMINI_MODEL
+        prov.type === 'groq'
+          ? normalizeGroqModel(prov.defaultModel)
+          : normalizeGeminiModel(prov.defaultModel)
       );
     }
   }, [selectedProviderId, providers]);
@@ -197,9 +202,10 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
 
   const handleSaveApiKeyInline = async () => {
     if (!selectedProviderId) return;
+    const fallbackModel = isGroqSelected ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
     await providerRepo.update(selectedProviderId, {
       apiKey: apiKeyInput.trim(),
-      defaultModel: modelInput.trim() || DEFAULT_GEMINI_MODEL,
+      defaultModel: modelInput.trim() || fallbackModel,
     });
   };
 
@@ -214,7 +220,8 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
         throw new Error('Please select an AI provider in Settings.');
       }
 
-      const effectiveModel = modelInput.trim() || DEFAULT_GEMINI_MODEL;
+      const fallbackModel = activeProv.type === 'groq' ? DEFAULT_GROQ_MODEL : DEFAULT_GEMINI_MODEL;
+      const effectiveModel = modelInput.trim() || fallbackModel;
       const effectiveProvider: AIProviderConfig = {
         ...activeProv,
         apiKey: apiKeyInput.trim(),
@@ -222,7 +229,9 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
       };
 
       if (!effectiveProvider.apiKey) {
-        throw new Error('API key is empty. Please paste your own Gemini API key below before generating.');
+        throw new Error(
+          `API key is empty. Please paste your own ${activeProv.type === 'groq' ? 'Groq' : 'Gemini'} API key below before generating.`
+        );
       }
 
       await providerRepo.save(effectiveProvider);
@@ -462,7 +471,7 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
                 <div className="p-3 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#1e293b] rounded-xl text-xs text-slate-600 dark:text-slate-400 flex items-start space-x-2">
                   <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                   <div>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">Bring Your Own Key:</span> API keys are left blank by default. Paste your own Gemini API key below—saved locally in IndexedDB and processed via our modern <code className="font-mono">@google/genai</code> server endpoint.
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Bring Your Own Key:</span> API keys stay empty by default. Choose free-tier Google Gemini or Groq and paste your own key—stored locally in IndexedDB.
                   </div>
                 </div>
 
@@ -490,22 +499,23 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
                       <label htmlFor="wizard-model-input" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                         Model Name
                       </label>
-                      <span className="text-[10px] text-slate-400">Manual entry supported</span>
+                      <span className="text-[10px] text-slate-400">Free models • Manual entry allowed</span>
                     </div>
                     <input
                       id="wizard-model-input"
                       type="text"
                       value={modelInput}
                       onChange={(e) => setModelInput(e.target.value)}
-                      placeholder="e.g. gemini-4-hydrogen"
+                      placeholder={isGroqSelected ? 'e.g. openai/gpt-oss-120b' : 'e.g. gemini-2.5-flash'}
                       className="w-full h-10 px-3 text-xs sm:text-sm font-mono bg-white dark:bg-[#172033] border border-slate-200 dark:border-[#1e293b] rounded-xl focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
                     />
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                      <span className="text-[10px] text-slate-400 font-medium">Active models:</span>
-                      {RECOMMENDED_GEMINI_MODELS.map((m) => (
+                      <span className="text-[10px] text-slate-400 font-medium">Free models:</span>
+                      {(isGroqSelected ? RECOMMENDED_GROQ_MODELS : RECOMMENDED_GEMINI_MODELS).map((m) => (
                         <button
                           key={m.id}
                           type="button"
+                          title={m.desc}
                           onClick={() => setModelInput(m.id)}
                           className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-colors ${
                             modelInput === m.id
@@ -523,15 +533,19 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label htmlFor="wizard-api-key-input" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-                      Your Gemini API Key (Manual Input) <span className="text-rose-500">*</span>
+                      Your {isGroqSelected ? 'Groq' : 'Gemini'} API Key (Manual Input) <span className="text-rose-500">*</span>
                     </label>
                     <a
-                      href="https://aistudio.google.com/app/apikey"
+                      href={
+                        isGroqSelected
+                          ? 'https://console.groq.com/keys'
+                          : 'https://aistudio.google.com/app/apikey'
+                      }
                       target="_blank"
                       rel="noreferrer"
                       className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Get Gemini Key ↗
+                      {isGroqSelected ? 'Get Groq Free Key ↗' : 'Get Gemini Key ↗'}
                     </a>
                   </div>
                   <div className="relative">
@@ -541,7 +555,11 @@ export const PRDBuilderWizard: React.FC<PRDBuilderWizardProps> = ({
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
                       onBlur={handleSaveApiKeyInline}
-                      placeholder="Paste your API key here (e.g. AIzaSy...)"
+                      placeholder={
+                        isGroqSelected
+                          ? 'Paste your Groq API key here (gsk_...)'
+                          : 'Paste your Gemini API key here (AIza... / AQ....)'
+                      }
                       className="w-full h-10 pl-3 pr-10 text-xs sm:text-sm font-mono bg-white dark:bg-[#172033] border border-slate-200 dark:border-[#1e293b] rounded-[8px] focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
                     />
                     <button

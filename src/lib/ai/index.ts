@@ -1,15 +1,14 @@
 import type { AIProvider } from './types';
 import { GeminiProvider } from './gemini';
-import { OpenAICompatibleProvider } from './openai';
+import { GroqProvider } from './groq';
 
 export * from './types';
 export * from './gemini';
-export * from './openai';
+export * from './groq';
 
 const providersMap: Record<string, AIProvider> = {
   gemini: new GeminiProvider(),
-  'openai-compatible': new OpenAICompatibleProvider(),
-  custom: new OpenAICompatibleProvider(),
+  groq: new GroqProvider(),
 };
 
 export function getAIProviderInstance(type: string): AIProvider {
